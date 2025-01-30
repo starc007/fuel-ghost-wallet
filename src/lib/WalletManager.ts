@@ -1,10 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Wallet, WalletUnlocked, hashMessage } from "fuels";
 
+interface Connection {
+  dappId: string;
+  address: string;
+  lastUsed: Date;
+}
+
 export class WalletManager {
   private static instance: WalletManager;
   private mainWallet: WalletUnlocked | null = null;
   private ghostWallets: Map<string, WalletUnlocked> = new Map();
+  private connections: Connection[] = [];
+  private eventTarget = new EventTarget();
 
   private constructor() {}
 
@@ -118,8 +126,53 @@ export class WalletManager {
     }));
   }
 
+  private loadConnections() {
+    const stored = localStorage.getItem("wallet_connections");
+    if (stored) {
+      this.connections = JSON.parse(stored);
+    }
+  }
+
+  private saveConnections() {
+    localStorage.setItem(
+      "wallet_connections",
+      JSON.stringify(this.connections)
+    );
+  }
+
+  addConnection(connection: Connection) {
+    this.connections.push(connection);
+    this.saveConnections();
+  }
+
+  removeConnection(dappId: string) {
+    this.connections = this.connections.filter((c) => c.dappId !== dappId);
+    this.saveConnections();
+
+    // Notify dapp about disconnection
+    if (window.opener) {
+      const connection = this.connections.find((c) => c.dappId === dappId);
+      if (connection) {
+        window.opener.postMessage(
+          {
+            type: "WALLET_DISCONNECTED",
+            data: { address: connection.address },
+          },
+          "*"
+        );
+      }
+    }
+  }
+
+  getConnections(): Connection[] {
+    this.loadConnections(); // Load latest connections before returning
+    return [...this.connections];
+  }
+
   clear() {
     this.mainWallet = null;
     this.ghostWallets.clear();
+    this.connections = [];
+    this.saveConnections();
   }
 }

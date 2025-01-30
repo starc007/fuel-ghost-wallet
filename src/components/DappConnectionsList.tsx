@@ -30,7 +30,8 @@ const DappConnectionsList: React.FC<DappConnectionsListProps> = ({
                   {connection.address}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Last used: {connection.lastUsed.toLocaleDateString()}
+                  Last used:{" "}
+                  {new Date(connection.lastUsed).toLocaleDateString()}
                 </p>
               </div>
               <button

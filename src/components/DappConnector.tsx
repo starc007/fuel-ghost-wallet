@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PassKeyManager } from "../lib/PasskeyManager";
 import type { DappConnection, DappMessage } from "../types/dapp";
+import { WalletManager } from "../lib/WalletManager";
 
 export const DappConnector = () => {
   const [searchParams] = useSearchParams();
@@ -56,6 +57,14 @@ export const DappConnector = () => {
 
         const ghostAddress = await passKeyManager.deriveAddressForDapp(dapp.id);
         console.log("👻 Using ghost wallet:", ghostAddress);
+
+        // Save connection to WalletManager
+        const walletManager = WalletManager.getInstance();
+        walletManager.addConnection({
+          dappId: dapp.id,
+          address: ghostAddress,
+          lastUsed: new Date(),
+        });
 
         if (!mounted.current) return;
         if (window.opener && dapp.origin) {

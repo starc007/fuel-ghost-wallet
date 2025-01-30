@@ -35,7 +35,7 @@ const App = () => {
           break;
 
         case "WALLET_DISCONNECTED":
-          console.log("❌ Wallet disconnected");
+          console.log("Wallet disconnected");
           setWalletState({
             connected: false,
             address: null,
@@ -44,7 +44,7 @@ const App = () => {
           break;
 
         case "WALLET_ERROR":
-          console.log("⚠️ Wallet error:", data?.error);
+          console.log("Wallet error:", data?.error);
           setWalletState((prev) => ({
             ...prev,
             isConnecting: false,
@@ -59,7 +59,7 @@ const App = () => {
 
   const connectWallet = async () => {
     try {
-      console.log("🔄 Initiating wallet connection...");
+      console.log("Initiating wallet connection...");
       setWalletState((prev) => ({
         ...prev,
         isConnecting: true,

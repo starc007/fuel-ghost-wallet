@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PassKeyManager } from "../lib/PasskeyManager";
 import DappConnectionsList from "./DappConnectionsList";
+import { WalletManager } from "../lib/WalletManager";
 
 const WalletComponent = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -15,6 +16,15 @@ const WalletComponent = () => {
   >([]);
 
   const passKeyManager = PassKeyManager.getInstance();
+  const walletManager = WalletManager.getInstance();
+
+  // Load connections on mount and when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const savedConnections = walletManager.getConnections();
+      setConnections(savedConnections);
+    }
+  }, [isAuthenticated]);
 
   const handleCreatePassKey = async () => {
     try {
@@ -30,11 +40,16 @@ const WalletComponent = () => {
     if (success && address) {
       setMainWalletAddress(address);
       setIsAuthenticated(true);
+      // Load existing connections after authentication
+      const savedConnections = walletManager.getConnections();
+      console.log("Loading saved connections:", savedConnections);
+      setConnections(savedConnections);
     }
   };
 
   const handleDisconnect = (dappId: string) => {
-    setConnections((prev) => prev.filter((conn) => conn.dappId !== dappId));
+    walletManager.removeConnection(dappId);
+    setConnections(walletManager.getConnections());
     if (
       connections.find((conn) => conn.dappId === dappId)?.address ===
       dappAddress
@@ -42,6 +57,8 @@ const WalletComponent = () => {
       setDappAddress("");
     }
   };
+
+  console.log(connections);
 
   return (
     <div className="p-6 max-w-md mx-auto bg-gray-900 rounded-xl shadow-lg border border-gray-800">
