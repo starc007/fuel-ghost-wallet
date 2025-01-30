@@ -3,6 +3,12 @@ import { PassKeyManager } from "../lib/PasskeyManager";
 import DappConnectionsList from "./DappConnectionsList";
 import { WalletManager } from "../lib/WalletManager";
 
+interface GhostWalletInfo {
+  index: number;
+  address: string;
+  privateKey: string;
+}
+
 const WalletComponent = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [dappAddress, setDappAddress] = useState("");
@@ -14,6 +20,7 @@ const WalletComponent = () => {
       lastUsed: Date;
     }>
   >([]);
+  const [ghostWallets, setGhostWallets] = useState<GhostWalletInfo[]>([]);
 
   const passKeyManager = PassKeyManager.getInstance();
   const walletManager = WalletManager.getInstance();
@@ -40,6 +47,30 @@ const WalletComponent = () => {
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [isAuthenticated]);
+
+  const loadGhostWallets = async () => {
+    if (!isAuthenticated) return;
+
+    const storedWallets = walletManager.getAllGhostAddresses();
+
+    // Derive private keys for each wallet
+    const walletsWithKeys = await Promise.all(
+      storedWallets.map(async ({ index, address }) => {
+        const wallet = await walletManager.deriveGhostWalletByIndex(index);
+        return {
+          index,
+          address,
+          privateKey: wallet.privateKey,
+        };
+      })
+    );
+
+    setGhostWallets(walletsWithKeys);
+  };
+
+  useEffect(() => {
+    loadGhostWallets();
+  }, [isAuthenticated, connections]);
 
   const handleCreatePassKey = async () => {
     try {
@@ -73,6 +104,7 @@ const WalletComponent = () => {
     }
   };
 
+  console.log("ghostWallets", ghostWallets);
   return (
     <div className="p-6 max-w-md mx-auto bg-gray-900 rounded-xl shadow-lg border border-gray-800">
       {!isAuthenticated ? (
@@ -101,6 +133,23 @@ const WalletComponent = () => {
             <p className="text-sm break-all text-gray-300">
               Current dApp Address: {dappAddress || "No dApp connected"}
             </p>
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-lg font-medium text-white">Ghost Wallets</h3>
+            <div className="mt-4 space-y-4">
+              {ghostWallets.map((wallet) => (
+                <div key={wallet.index} className="bg-gray-800 p-4 rounded-lg">
+                  <p className="text-sm text-gray-400">Index: {wallet.index}</p>
+                  <p className="text-sm text-white break-all">
+                    Address: {wallet.address}
+                  </p>
+                  <p className="text-sm text-gray-400 break-all">
+                    Private Key: {wallet.privateKey}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
 
           <DappConnectionsList

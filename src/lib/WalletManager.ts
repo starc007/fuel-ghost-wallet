@@ -1,19 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Wallet, WalletUnlocked, hashMessage } from "fuels";
+import { keccak256 } from "ethereum-cryptography/keccak";
+import { utf8ToBytes } from "ethereum-cryptography/utils";
 
 interface Connection {
   dappId: string;
+  ghostIndex: number;
   address: string;
   lastUsed: Date;
+}
+
+interface StoredGhostWallet {
+  index: number;
+  address: string;
 }
 
 export class WalletManager {
   private static instance: WalletManager;
   private mainWallet: WalletUnlocked | null = null;
-  private ghostWallets: Map<string, WalletUnlocked> = new Map();
+  private ghostWallets: Map<number, string> = new Map();
   private connections: Connection[] = [];
+  private nextGhostIndex: number = 0;
 
-  private constructor() {}
+  private constructor() {
+    this.loadState();
+    this.loadConnections();
+    this.loadGhostWallets();
+  }
 
   static getInstance(): WalletManager {
     if (!WalletManager.instance) {
@@ -82,47 +95,97 @@ export class WalletManager {
       throw new Error("Main wallet not initialized");
     }
 
-    console.log("Deriving ghost wallet for dApp:", dappId);
-    console.log("Using main wallet:", {
-      address: this.mainWallet.address.toString(),
-      privateKey: this.mainWallet.privateKey,
-    });
+    // Use the next available index
+    const ghostIndex = this.nextGhostIndex++;
 
-    const seed = await hashMessage(this.mainWallet.privateKey + dappId);
-    console.log("Generated seed:", seed);
+    // Derive ghost wallet using index
+    const ghostWallet = await this.deriveGhostWalletByIndex(ghostIndex);
 
-    const ghostWallet = Wallet.fromPrivateKey(seed);
-    console.log("Created ghost wallet:", {
+    // Store wallet and create connection
+    this.ghostWallets.set(ghostIndex, ghostWallet.address.toString());
+    this.addConnection({
       dappId,
+      ghostIndex,
       address: ghostWallet.address.toString(),
-      privateKey: ghostWallet.privateKey,
+      lastUsed: new Date(),
     });
 
-    this.ghostWallets.set(dappId, ghostWallet);
     return ghostWallet.address.toString();
   }
 
-  getGhostWallet(dappId: string): WalletUnlocked | undefined {
-    return this.ghostWallets.get(dappId);
+  async deriveGhostWalletByIndex(index: number): Promise<WalletUnlocked> {
+    if (!this.mainWallet) {
+      throw new Error("Main wallet not initialized");
+    }
+
+    // Create deterministic path using index
+    const indexBytes = new Uint8Array(32);
+    new DataView(indexBytes.buffer).setUint32(28, index, true); // Last 4 bytes for index
+
+    // Convert indexBytes to hex string
+    const indexHex = Array.from(indexBytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Derive ghost wallet private key
+    const derivationMaterial = this.mainWallet.privateKey + indexHex;
+    const ghostPrivateKey = keccak256(utf8ToBytes(derivationMaterial));
+    const ghostPrivateKeyHex = Array.from(ghostPrivateKey)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    return Wallet.fromPrivateKey(ghostPrivateKeyHex);
   }
 
-  async signTransaction(dappId: string, transaction: any) {
-    const wallet = this.ghostWallets.get(dappId);
-    if (!wallet) {
-      throw new Error("No ghost wallet found for this dApp");
+  // Method to recover any ghost wallet by index
+  async recoverGhostWallet(
+    mainPrivateKey: string,
+    index: number
+  ): Promise<WalletUnlocked> {
+    const mainWallet = Wallet.fromPrivateKey(mainPrivateKey);
+    const indexBytes = new Uint8Array(32);
+    new DataView(indexBytes.buffer).setUint32(28, index, true);
+
+    const indexHex = Array.from(indexBytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    const derivationMaterial = mainWallet.privateKey + indexHex;
+    const ghostPrivateKey = keccak256(utf8ToBytes(derivationMaterial));
+    const ghostPrivateKeyHex = Array.from(ghostPrivateKey)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    return Wallet.fromPrivateKey(ghostPrivateKeyHex);
+  }
+
+  private loadState() {
+    const state = localStorage.getItem("wallet_state");
+    if (state) {
+      const { nextGhostIndex } = JSON.parse(state);
+      this.nextGhostIndex = nextGhostIndex;
     }
-    return await wallet.signTransaction(transaction);
+  }
+
+  getGhostWallet(dappId: string): string | undefined {
+    const connection = this.connections.find((c) => c.dappId === dappId);
+    return connection
+      ? this.ghostWallets.get(connection.ghostIndex)
+      : undefined;
   }
 
   getMainWalletAddress(): string | null {
     return this.mainWallet?.address.toString() || null;
   }
 
-  getAllGhostAddresses(): Array<{ dappId: string; address: string }> {
-    return Array.from(this.ghostWallets.entries()).map(([dappId, wallet]) => ({
-      dappId,
-      address: wallet.address.toString(),
-    }));
+  getAllGhostAddresses(): Array<{ index: number; address: string }> {
+    const ghostWallets = Array.from(this.ghostWallets.entries()).map(
+      ([index, wallet]) => ({
+        index,
+        address: wallet,
+      })
+    );
+    return ghostWallets;
   }
 
   private loadConnections() {
@@ -146,15 +209,39 @@ export class WalletManager {
     );
   }
 
+  private saveGhostWallets() {
+    const storedWallets: StoredGhostWallet[] = Array.from(
+      this.ghostWallets.entries()
+    ).map(([index, wallet]) => ({
+      index,
+      address: wallet,
+    }));
+
+    localStorage.setItem("ghost_wallets", JSON.stringify(storedWallets));
+  }
+
+  private loadGhostWallets() {
+    const stored = localStorage.getItem("ghost_wallets");
+    if (stored) {
+      const wallets: StoredGhostWallet[] = JSON.parse(stored);
+
+      wallets.forEach(({ index, address }) => {
+        this.ghostWallets.set(index, address);
+      });
+    }
+  }
+
   addConnection(connection: Connection) {
     this.connections.push(connection);
     this.saveConnections();
+    this.saveGhostWallets();
   }
 
   removeConnection(dappId: string) {
     const connection = this.connections.find((c) => c.dappId === dappId);
     this.connections = this.connections.filter((c) => c.dappId !== dappId);
     this.saveConnections();
+    this.saveGhostWallets();
 
     // Notify dapp about disconnection
     if (connection) {
@@ -186,5 +273,7 @@ export class WalletManager {
     this.ghostWallets.clear();
     this.connections = [];
     this.saveConnections();
+    this.saveGhostWallets();
+    localStorage.removeItem("ghost_wallets");
   }
 }

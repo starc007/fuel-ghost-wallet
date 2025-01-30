@@ -60,7 +60,9 @@ export const DappConnector = () => {
 
       try {
         setStatus("authenticating");
+        console.log("Starting authentication...");
         const { success, address } = await passKeyManager.authenticatePassKey();
+        console.log("Authentication result:", { success, address });
 
         if (!success || !address) {
           throw new Error("Authentication failed");
@@ -68,44 +70,48 @@ export const DappConnector = () => {
 
         if (!mounted.current) return;
         setStatus("connecting");
+        console.log("Deriving ghost wallet...");
 
-        const ghostAddress = await passKeyManager.deriveAddressForDapp(dapp.id);
-        console.log("👻 Using ghost wallet:", ghostAddress);
-
-        // Save connection to WalletManager
-        const walletManager = WalletManager.getInstance();
-        walletManager.addConnection({
-          dappId: dapp.id,
-          address: ghostAddress,
-          lastUsed: new Date(),
-        });
-
-        if (!mounted.current) return;
-        if (window.opener && dapp.origin) {
-          window.opener.postMessage(
-            {
-              type: "WALLET_CONNECTED",
-              data: { address: ghostAddress },
-            } as DappMessage,
-            dapp.origin
+        try {
+          const ghostAddress = await passKeyManager.deriveAddressForDapp(
+            dapp.id
           );
-        }
+          console.log("Ghost wallet derived:", ghostAddress);
 
-        setStatus("connected");
-        setDapp((prev) => (prev ? { ...prev, connected: true } : null));
-
-        setTimeout(() => {
-          if (mounted.current) {
-            window.close();
+          if (!mounted.current) return;
+          if (window.opener && dapp.origin) {
+            console.log("Sending connection message to dapp...");
+            window.opener.postMessage(
+              {
+                type: "WALLET_CONNECTED",
+                data: { address: ghostAddress },
+              } as DappMessage,
+              dapp.origin
+            );
           }
-        }, 1000);
+
+          setStatus("connected");
+          setDapp((prev) => (prev ? { ...prev, connected: true } : null));
+
+          setTimeout(() => {
+            if (mounted.current) {
+              window.close();
+            }
+          }, 1000);
+        } catch (error) {
+          console.error("Ghost wallet derivation error:", error);
+          throw error;
+        }
       } catch (error) {
         console.error("Connection error:", error);
         if (mounted.current && window.opener && dapp.origin) {
           window.opener.postMessage(
             {
               type: "WALLET_ERROR",
-              data: { error: "Connection failed" },
+              data: {
+                error:
+                  error instanceof Error ? error.message : "Connection failed",
+              },
             } as DappMessage,
             dapp.origin
           );
