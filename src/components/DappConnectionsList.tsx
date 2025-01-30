@@ -36,7 +36,7 @@ const DappConnectionsList: React.FC<DappConnectionsListProps> = ({
               </div>
               <button
                 onClick={() => onDisconnect(connection.dappId)}
-                className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                className="text-sm cursor-pointer text-red-400 hover:text-red-300 transition-colors"
               >
                 Disconnect
               </button>

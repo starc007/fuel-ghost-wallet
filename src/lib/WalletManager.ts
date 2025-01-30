@@ -138,6 +138,13 @@ export class WalletManager {
       "wallet_connections",
       JSON.stringify(this.connections)
     );
+    // Dispatch storage event for real-time updates
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "wallet_connections",
+        newValue: JSON.stringify(this.connections),
+      })
+    );
   }
 
   addConnection(connection: Connection) {

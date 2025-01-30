@@ -18,12 +18,27 @@ const WalletComponent = () => {
   const passKeyManager = PassKeyManager.getInstance();
   const walletManager = WalletManager.getInstance();
 
-  // Load connections on mount and when authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isAuthenticated) return;
+
+    // Initial load
+    const loadConnections = () => {
       const savedConnections = walletManager.getConnections();
       setConnections(savedConnections);
-    }
+    };
+
+    loadConnections();
+
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "wallet_connections") {
+        console.log("Connections updated:", e.newValue);
+        loadConnections();
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, [isAuthenticated]);
 
   const handleCreatePassKey = async () => {
