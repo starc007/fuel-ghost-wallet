@@ -5,6 +5,7 @@ import DappConnectionsList from "./DappConnectionsList";
 const WalletComponent = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [dappAddress, setDappAddress] = useState("");
+  const [mainWalletAddress, setMainWalletAddress] = useState("");
   const [connections, setConnections] = useState<
     Array<{
       dappId: string;
@@ -25,8 +26,11 @@ const WalletComponent = () => {
   };
 
   const handleAuthenticate = async () => {
-    const success = await passKeyManager.authenticatePassKey();
-    setIsAuthenticated(success);
+    const { success, address } = await passKeyManager.authenticatePassKey();
+    if (success && address) {
+      setMainWalletAddress(address);
+      setIsAuthenticated(true);
+    }
   };
 
   const handleDappConnect = async (dappId: string) => {
@@ -105,6 +109,10 @@ const WalletComponent = () => {
       ) : (
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-white">Wallet Connected</h2>
+          <p className="text-sm text-gray-400 whitespace-pre">
+            Main Wallet Address:
+          </p>
+          <p className="text-sm break-all text-white">{mainWalletAddress}</p>
           <button
             onClick={handleTestGhostWallet}
             className="w-full px-4 py-2 bg-[#00E182] text-black font-medium rounded hover:bg-[#00c974] transition-colors"

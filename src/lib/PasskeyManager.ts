@@ -50,7 +50,10 @@ export class PassKeyManager {
     }
   }
 
-  async authenticatePassKey(): Promise<boolean> {
+  async authenticatePassKey(): Promise<{
+    success: boolean;
+    address: string | null;
+  }> {
     try {
       const authOptions = await this.getAuthenticationOptions();
       const credential = await startAuthentication(authOptions);
@@ -62,12 +65,21 @@ export class PassKeyManager {
           credential.rawId
         );
         console.log("Main wallet derived with address:", address);
-        return true;
+        return {
+          success: true,
+          address,
+        };
       }
-      return false;
+      return {
+        success: false,
+        address: null,
+      };
     } catch (error) {
       console.error("PassKey authentication failed:", error);
-      return false;
+      return {
+        success: false,
+        address: null,
+      };
     }
   }
 
