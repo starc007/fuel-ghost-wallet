@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Custom color for CTA */
+  --fuel-green: #00e182;
+}
+
+body {
+  background-color: black;
+  color: white;
+}
