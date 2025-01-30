@@ -1,16 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useAccount } from "../hooks/useAccount";
-import type { DappConnection, DappMessage } from "../types/dapp";
 import { PassKeyManager } from "../lib/PasskeyManager";
+import type { DappConnection, DappMessage } from "../types/dapp";
 
 export const DappConnector = () => {
   const [searchParams] = useSearchParams();
-  const { isUnlocked, getGhostWallet } = useAccount();
   const [dapp, setDapp] = useState<DappConnection | null>(null);
   const [status, setStatus] = useState<
     "initial" | "authenticating" | "connecting" | "connected"
   >("initial");
+  const passKeyManager = PassKeyManager.getInstance();
+  const mounted = useRef(false);
+  const connectionAttempted = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const dappId = searchParams.get("dappId");
@@ -30,22 +38,26 @@ export const DappConnector = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!dapp || !isUnlocked) return;
+    if (!dapp || !mounted.current || connectionAttempted.current) return;
 
     const connectToDapp = async () => {
+      connectionAttempted.current = true;
+
       try {
         setStatus("authenticating");
-        const passKeyManager = PassKeyManager.getInstance();
-        const authenticated = await passKeyManager.authenticatePassKey();
+        const { success, address } = await passKeyManager.authenticatePassKey();
 
-        if (!authenticated) {
+        if (!success || !address) {
           throw new Error("Authentication failed");
         }
 
+        if (!mounted.current) return;
         setStatus("connecting");
-        const ghostAddress = await getGhostWallet(dapp.id);
+
+        const ghostAddress = await passKeyManager.deriveAddressForDapp(dapp.id);
         console.log("👻 Using ghost wallet:", ghostAddress);
 
+        if (!mounted.current) return;
         if (window.opener && dapp.origin) {
           window.opener.postMessage(
             {
@@ -59,11 +71,14 @@ export const DappConnector = () => {
         setStatus("connected");
         setDapp((prev) => (prev ? { ...prev, connected: true } : null));
 
-        // Close after successful connection
-        setTimeout(() => window.close(), 1000);
+        setTimeout(() => {
+          if (mounted.current) {
+            window.close();
+          }
+        }, 1000);
       } catch (error) {
         console.error("Connection error:", error);
-        if (window.opener && dapp.origin) {
+        if (mounted.current && window.opener && dapp.origin) {
           window.opener.postMessage(
             {
               type: "WALLET_ERROR",
@@ -76,7 +91,7 @@ export const DappConnector = () => {
     };
 
     connectToDapp();
-  }, [dapp, getGhostWallet, isUnlocked]);
+  }, [dapp]);
 
   const getStatusMessage = () => {
     switch (status) {
