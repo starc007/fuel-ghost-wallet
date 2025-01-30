@@ -22,10 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Server
-server/authenticators.json
-server/node_modules
-
-# Dapp
-dapp-example/node_modules
