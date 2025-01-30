@@ -87,7 +87,7 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white font-mono p-8">
+    <div className="min-h-screen text-white p-8">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Test Dapp</h1>
 
@@ -113,7 +113,7 @@ const App = () => {
           <button
             onClick={connectWallet}
             disabled={walletState.connected || walletState.isConnecting}
-            className={`w-full px-4 py-2 rounded-xl font-medium transition-colors text-black
+            className={`w-full cursor-pointer px-4 py-2 rounded-xl font-medium transition-colors text-black
               ${
                 walletState.connected || walletState.isConnecting
                   ? "bg-[#2A2A2A] cursor-not-allowed"
@@ -123,15 +123,6 @@ const App = () => {
             {walletState.isConnecting ? "Connecting..." : "Connect Wallet"}
           </button>
         </div>
-
-        {walletState.connected && (
-          <div className="bg-[#1A1A1A] rounded-xl p-6">
-            <h2 className="text-xl font-semibold mb-4">Test Actions</h2>
-            <button className="w-full px-4 py-2 rounded-xl font-medium bg-[#FF5F15] hover:bg-[#FF5F15]/80 transition-colors">
-              Send Test Transaction
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
