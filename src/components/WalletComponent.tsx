@@ -73,8 +73,6 @@ const WalletComponent = () => {
     }
   };
 
-  console.log(connections);
-
   return (
     <div className="p-6 max-w-md mx-auto bg-gray-900 rounded-xl shadow-lg border border-gray-800">
       {!isAuthenticated ? (

@@ -12,7 +12,6 @@ export class WalletManager {
   private mainWallet: WalletUnlocked | null = null;
   private ghostWallets: Map<string, WalletUnlocked> = new Map();
   private connections: Connection[] = [];
-  private eventTarget = new EventTarget();
 
   private constructor() {}
 
@@ -153,21 +152,27 @@ export class WalletManager {
   }
 
   removeConnection(dappId: string) {
+    const connection = this.connections.find((c) => c.dappId === dappId);
     this.connections = this.connections.filter((c) => c.dappId !== dappId);
     this.saveConnections();
 
     // Notify dapp about disconnection
-    if (window.opener) {
-      const connection = this.connections.find((c) => c.dappId === dappId);
-      if (connection) {
-        window.opener.postMessage(
-          {
-            type: "WALLET_DISCONNECTED",
-            data: { address: connection.address },
-          },
-          "*"
-        );
+    if (connection) {
+      const message = {
+        type: "WALLET_DISCONNECTED",
+        data: { address: connection.address },
+      };
+
+      // Try window.opener
+      if (window.opener) {
+        window.opener.postMessage(message, "*");
       }
+
+      // Dispatch custom event for all windows
+      const disconnectEvent = new CustomEvent("wallet_disconnect", {
+        detail: message,
+      });
+      window.dispatchEvent(disconnectEvent);
     }
   }
 

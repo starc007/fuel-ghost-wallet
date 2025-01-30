@@ -23,10 +23,24 @@ export const DappConnector = () => {
 
   useEffect(() => {
     const dappId = searchParams.get("dappId");
+    const action = searchParams.get("action");
     const origin = searchParams.get("origin");
 
-    if (!dappId || !origin) {
-      console.log("❌ Missing dapp connection params");
+    if (!dappId) {
+      console.log("❌ Missing dapp ID");
+      return;
+    }
+
+    if (action === "disconnect") {
+      console.log("🔌 Processing disconnect request for:", dappId);
+      const walletManager = WalletManager.getInstance();
+      walletManager.removeConnection(dappId);
+      window.close();
+      return;
+    }
+
+    if (!origin) {
+      console.log("❌ Missing origin");
       return;
     }
 

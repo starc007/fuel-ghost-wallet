@@ -15,46 +15,29 @@ const App = () => {
   });
 
   useEffect(() => {
-    // Setup message listener
+    // Listen for direct messages
     const handleWalletMessage = (event: MessageEvent<WalletMessage>) => {
+      console.log("Direct message received:", event.data);
       if (event.origin !== "http://localhost:5173") return;
+      handleMessage(event.data);
+    };
 
-      const { type, data } = event.data;
-      console.log("📩 Received wallet message:", { type, data });
-
-      switch (type) {
-        case "WALLET_CONNECTED":
-          if (data?.address) {
-            console.log("🔗 Wallet connected:", data.address);
-            setWalletState({
-              connected: true,
-              address: data.address,
-              isConnecting: false,
-            });
-          }
-          break;
-
-        case "WALLET_DISCONNECTED":
-          console.log("Wallet disconnected");
-          setWalletState({
-            connected: false,
-            address: null,
-            isConnecting: false,
-          });
-          break;
-
-        case "WALLET_ERROR":
-          console.log("Wallet error:", data?.error);
-          setWalletState((prev) => ({
-            ...prev,
-            isConnecting: false,
-          }));
-          break;
+    // Listen for localStorage events
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "wallet_disconnect_trigger" && e.newValue) {
+        console.log("Storage event:", e.newValue);
+        const data = JSON.parse(e.newValue);
+        handleMessage(data);
       }
     };
 
     window.addEventListener("message", handleWalletMessage);
-    return () => window.removeEventListener("message", handleWalletMessage);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("message", handleWalletMessage);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   const connectWallet = async () => {
@@ -86,6 +69,41 @@ const App = () => {
     }
   };
 
+  const handleMessage = (message: WalletMessage) => {
+    const { type, data } = message;
+    console.log("Processing message:", { type, data });
+
+    switch (type) {
+      case "WALLET_CONNECTED":
+        if (data?.address) {
+          console.log("Wallet connected:", data.address);
+          setWalletState({
+            connected: true,
+            address: data.address,
+            isConnecting: false,
+          });
+        }
+        break;
+
+      case "WALLET_DISCONNECTED":
+        console.log("Wallet disconnected");
+        setWalletState({
+          connected: false,
+          address: null,
+          isConnecting: false,
+        });
+        break;
+
+      case "WALLET_ERROR":
+        console.log("Wallet error:", data?.error);
+        setWalletState((prev) => ({
+          ...prev,
+          isConnecting: false,
+        }));
+        break;
+    }
+  };
+
   return (
     <div className="min-h-screen text-white p-8">
       <div className="max-w-2xl mx-auto">
@@ -110,18 +128,39 @@ const App = () => {
             </div>
           )}
 
-          <button
-            onClick={connectWallet}
-            disabled={walletState.connected || walletState.isConnecting}
-            className={`w-full cursor-pointer px-4 py-2 rounded-xl font-medium transition-colors text-black
-              ${
-                walletState.connected || walletState.isConnecting
-                  ? "bg-[#2A2A2A] cursor-not-allowed"
-                  : "bg-[#00E182] hover:bg-[#00E182]/80"
-              }`}
-          >
-            {walletState.isConnecting ? "Connecting..." : "Connect Wallet"}
-          </button>
+          {!walletState.connected ? (
+            <button
+              onClick={connectWallet}
+              disabled={walletState.isConnecting}
+              className={`w-full cursor-pointer px-4 py-2 rounded-xl font-medium transition-colors text-black
+                ${
+                  walletState.isConnecting
+                    ? "bg-[#2A2A2A] cursor-not-allowed"
+                    : "bg-[#00E182] hover:bg-[#00E182]/80"
+                }`}
+            >
+              {walletState.isConnecting ? "Connecting..." : "Connect Wallet"}
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setWalletState({
+                  connected: false,
+                  address: null,
+                  isConnecting: false,
+                });
+                // Send disconnect message directly to wallet
+                window.open(
+                  `http://localhost:5173?dappId=test-dapp-1&action=disconnect`,
+                  "Fuel Ghost Wallet",
+                  "width=400,height=600"
+                );
+              }}
+              className="w-full cursor-pointer px-4 py-2 rounded-xl font-medium transition-colors bg-[#FF1515] hover:bg-[#FF1515]/80 text-white"
+            >
+              Disconnect
+            </button>
+          )}
         </div>
       </div>
     </div>
