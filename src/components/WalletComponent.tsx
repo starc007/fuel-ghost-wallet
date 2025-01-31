@@ -51,6 +51,7 @@ const WalletComponent = () => {
   const loadGhostWallets = async () => {
     if (!isAuthenticated) return;
 
+    walletManager.loadGhostWallets();
     const storedWallets = walletManager.getAllGhostAddresses();
 
     // Derive private keys for each wallet
@@ -74,8 +75,11 @@ const WalletComponent = () => {
 
   const handleCreatePassKey = async () => {
     try {
-      await passKeyManager.createPassKey();
-      setIsAuthenticated(true);
+      const { success, address } = await passKeyManager.createPassKey();
+      if (success && address) {
+        setMainWalletAddress(address);
+        setIsAuthenticated(true);
+      }
     } catch (error) {
       console.error("Failed to create PassKey:", error);
     }
@@ -136,7 +140,15 @@ const WalletComponent = () => {
           </div>
 
           <div className="mt-6">
-            <h3 className="text-lg font-medium text-white">Ghost Wallets</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-white">Ghost Wallets</h3>
+              <button
+                onClick={loadGhostWallets}
+                className="px-3 cursor-pointer py-1 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
             <div className="mt-4 space-y-4">
               {ghostWallets.map((wallet) => (
                 <div key={wallet.index} className="bg-gray-800 p-4 rounded-lg">

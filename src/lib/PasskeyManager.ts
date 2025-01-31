@@ -23,7 +23,10 @@ export class PassKeyManager {
     return PassKeyManager.instance;
   }
 
-  async createPassKey(): Promise<boolean> {
+  async createPassKey(): Promise<{
+    success: boolean;
+    address: string | null;
+  }> {
     try {
       console.log("Starting PassKey creation...");
       const registrationOptions = await this.getRegistrationOptions();
@@ -41,12 +44,21 @@ export class PassKeyManager {
           credential.rawId
         );
         console.log("Main wallet derived with address:", address);
-        return true;
+        return {
+          success: true,
+          address,
+        };
       }
-      return false;
+      return {
+        success: false,
+        address: null,
+      };
     } catch (error) {
       console.error("PassKey creation failed:", error);
-      return false;
+      return {
+        success: false,
+        address: null,
+      };
     }
   }
 

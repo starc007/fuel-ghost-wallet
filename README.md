@@ -1,6 +1,6 @@
 # Fuel Ghost Wallet
 
-A privacy-focused wallet for the Fuel Network that generates unique addresses for each dApp connection.
+A privacy-focused wallet for the Fuel Network that generates unique addresses for each dApp connection. NEVER REVEAL YOUR MAIN WALLET TO ANYONE.
 
 ## Features
 

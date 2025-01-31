@@ -72,24 +72,6 @@ export class WalletManager {
     return address;
   }
 
-  async loadMainWallet(): Promise<string | null> {
-    const storedWallet = localStorage.getItem("mainWallet");
-    if (!storedWallet) {
-      console.log("No stored wallet found");
-      return null;
-    }
-
-    try {
-      const walletInfo = JSON.parse(storedWallet);
-      console.log("Loading stored wallet:", walletInfo.address);
-      this.mainWallet = Wallet.fromPrivateKey(walletInfo.privateKey);
-      return walletInfo.address;
-    } catch (error) {
-      console.error("Failed to load wallet:", error);
-      return null;
-    }
-  }
-
   async deriveGhostWallet(dappId: string): Promise<string> {
     if (!this.mainWallet) {
       throw new Error("Main wallet not initialized");
@@ -220,7 +202,7 @@ export class WalletManager {
     localStorage.setItem("ghost_wallets", JSON.stringify(storedWallets));
   }
 
-  private loadGhostWallets() {
+  loadGhostWallets() {
     const stored = localStorage.getItem("ghost_wallets");
     if (stored) {
       const wallets: StoredGhostWallet[] = JSON.parse(stored);
